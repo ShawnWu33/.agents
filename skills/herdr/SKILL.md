@@ -10,13 +10,9 @@ terminal and agent and keeps them alive. Agents you start with `hc run` are your
 children: they show in Herdr's agents list under your tab, so the user can
 watch and steer them.
 
-The installed binaries are the authority. Read the current manual before your
-first `hc` command in a session:
-
-```sh
-hc --skill          # running, messaging, waiting on and cleaning up agents and programs
-herdr-app --skill   # only for changing what the window shows (spaces, tabs, panes)
-```
+This file covers everyday use. Run `hc --skill` (about 20 KB) only when you need a
+command or flag that isn't here, and at most once per session. Run
+`herdr-app --skill` only when asked to change what the window shows.
 
 The older `herdr` CLI (`herdr agent ...`, `HERDR_ENV`, `w1:p1` pane IDs) is a
 different program. Do not use it for this.
@@ -26,8 +22,9 @@ different program. Do not use it for this.
 - `$HC_TERMINAL_ID` is your address (`t19`). If it is unset you are not in an hc
   terminal: say so and use your harness's own sub-agents instead.
 - Inside Herdr, prefer `hc` over in-process sub-agent tools when you delegate, so
-  the work is visible and steerable. The usual ceremony rules still apply: no
-  helpers for single-pass work, and ask before starting a swarm.
+  the work is visible and steerable. Delegate only long or truly parallel work; do
+  short tasks yourself. Start at most 2 children without asking the user, and give
+  follow-ups to an existing child with `hc send` instead of starting a new one.
 
 ## Start a sub-agent
 
@@ -37,14 +34,16 @@ without that line it answers in its own transcript and you never hear about it.
 
 ```sh
 hc run --bg --name review --cwd "$PWD" claude --model sonnet \
-  "Review src/x.rs only. Read-only; no sub-agents. Report findings with: hc send $HC_TERMINAL_ID \"<findings or path to a file>\" when done or stuck."
+  "Review src/x.rs only. Read-only; no sub-agents. Don't load the herdr skill or run hc --skill. Report findings with: hc send $HC_TERMINAL_ID \"<findings or path to a file>\" when done or stuck."
 
 hc run --bg --name impl --cwd "$PWD" codex --no-daemon \
-  "Fix the failing test in x.rs; touch no other files; no sub-agents. Report with: hc send $HC_TERMINAL_ID \"<result>\" when done or stuck."
+  "Fix the failing test in x.rs; touch no other files; no sub-agents. Don't load the herdr skill or run hc --skill. Report with: hc send $HC_TERMINAL_ID \"<result>\" when done or stuck."
 ```
 
-- Claude Code: `claude [--model M] "task"`.
-- Codex: always `codex --no-daemon [-m M] [-c model_reasoning_effort=E] "task"`.
+- Use the cheapest model that can do the job. Claude Code: `claude --model haiku` for
+  searches, lookups and mechanical edits; `--model sonnet` for reviews and real code changes.
+- Codex: always `codex --no-daemon [-m M] -c model_reasoning_effort=low "task"`; raise
+  the effort only for hard tasks.
   Without `--no-daemon` its commands run outside hc.
 - Pi: launch, `hc wait`, then `hc send` the task (see `hc --skill`).
 - Launch in your own folder (`--cwd "$PWD"`) or another folder the agent
@@ -58,16 +57,16 @@ hc run --bg --name impl --cwd "$PWD" codex --no-daemon \
 ## Wait and collect
 
 ```sh
-hc wait --children any     # next child's news, or a message to you
-hc wait --children all     # until no child is working
-hc read review --lines 120 # its screen and history
+hc wait --children any --timeout 540  # next child's news, or a message to you
+hc wait --children all --timeout 540  # until no child is working
+hc read review --lines 40             # its screen and history
 hc send review "Also check y.rs"
 hc interrupt review        # stop its turn, not the process
 ```
 
-- Never sleep or poll. `hc wait` checks in after 180 s (`reason: timeout`):
-  that is not failure, wait again. Give your shell tool a timeout longer than
-  hc's, or pass `--timeout`.
+- Never sleep or poll. Each check-in costs a full turn, so pass `--timeout 540`
+  and give your shell tool a 600 s timeout (Claude Code's maximum). A
+  `reason: timeout` is not failure: wait again.
 - A child that has not reported any status yet counts as working. If a wait
   times out and `hc get <t>` still shows no status, `hc read <t> --lines 0`: it
   is probably at a trust or login dialog. Kill it and relaunch in a trusted
