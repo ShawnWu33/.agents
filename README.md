@@ -6,6 +6,7 @@ One set of instructions and skills for every coding agent: Claude Code, Codex, O
 ~/.agents/
 ├── AGENTS.md          # global instructions every agent loads
 ├── skills/<name>/     # skills (one folder each, with SKILL.md)
+├── agents/<name>.md   # subagents (Claude Code format)
 ├── install.sh         # links this folder into each agent
 └── INSTALL_PROMPT.md  # paste into any agent to install for you
 ```
@@ -33,7 +34,7 @@ Re-run it any time; it only changes what is missing.
 
 | Agent | Instructions | Skills |
 |---|---|---|
-| Claude Code | `~/.claude/CLAUDE.md` gets the line `@~/.agents/AGENTS.md` | symlink per skill in `~/.claude/skills/` |
+| Claude Code | `~/.claude/CLAUDE.md` gets the line `@~/.agents/AGENTS.md` | symlink per skill in `~/.claude/skills/`, per subagent in `~/.claude/agents/` |
 | Codex | `~/.codex/AGENTS.md` → symlink | reads `~/.agents/skills` itself |
 | OpenCode | `~/.config/opencode/AGENTS.md` → symlink | reads `~/.agents/skills` itself |
 | Pi | `~/.pi/agent/AGENTS.md` → symlink | reads `~/.agents/skills` itself |
@@ -55,6 +56,8 @@ Claude-specific notes can go there, below the import.
 
 ## Notes
 
+- Subagents in `agents/` are only linked for Claude Code. Skills that start one by name
+  (`no-comments`) work fully there; other agents will improvise that step.
 - OpenCode also reads `~/.claude/skills`, so it may see each skill twice (once per folder). Both
   point to the same files.
 - Adding another agent: find where it reads global instructions and skills, then add a block to
@@ -69,3 +72,15 @@ Claude-specific notes can go there, below the import.
 - `orchestrate`: act as orchestrator for a multi-PR plan: split it into work pieces, fan them out
   to sub-agents over `hc` (one worktree and PR each), share the e2e slot, review, squash-merge in
   dependency order and report. Builds on `herdr`.
+- `no-comments` (run it as `/no-comments`): starts the `comment-sicko` subagent to strip
+  comments from the current diff, then fixes what it flags. Uses `why` and `architect`. From
+  Cursor's [pstack](https://github.com/cursor/plugins/tree/main/pstack) plugin, along with:
+  - `why` (`/why`): explain why code is the way it is, from commits and PR history.
+  - `architect` (`/architect`): sketch types and module shape before writing code.
+  - `agents/comment-sicko.md`: the subagent `no-comments` starts.
+  - `arena` (`/arena`): run 3+ subagents on the same task in parallel, have a judge score them,
+    then merge the best parts. Costly: only use it for designs worth several attempts. Written
+    for Cursor's models; elsewhere it falls back to the models available and may skip the judge.
+
+  Left out on purpose: pstack's `poteto-mode` and `principle-*` skills, which these
+  only mention as background.

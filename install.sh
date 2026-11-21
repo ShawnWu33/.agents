@@ -65,7 +65,7 @@ detected() { # detected <binary> <config-dir>
   [ "$ALL" = 1 ] || command -v "$1" >/dev/null 2>&1 || [ -d "$2" ]
 }
 
-# --- Claude Code: @import in CLAUDE.md, one symlink per skill ----------------
+# --- Claude Code: @import in CLAUDE.md, one symlink per skill and subagent ---
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 if detected claude "$CLAUDE_DIR"; then
   say "Claude Code ($CLAUDE_DIR)"
@@ -84,9 +84,13 @@ if detected claude "$CLAUDE_DIR"; then
     name="$(basename "$skill")"
     link "$AGENTS/skills/$name" "$CLAUDE_DIR/skills/$name"
   done
-  # Drop links to skills that were removed from ~/.agents/skills.
-  for l in "$CLAUDE_DIR"/skills/*; do
-    if [ -L "$l" ] && [ ! -e "$l" ] && [[ "$(readlink "$l")" == "$AGENTS/skills/"* ]]; then
+  for agent in "$AGENTS"/agents/*.md; do
+    [ -f "$agent" ] || continue
+    link "$agent" "$CLAUDE_DIR/agents/$(basename "$agent")"
+  done
+  # Drop links to skills and subagents that were removed from ~/.agents.
+  for l in "$CLAUDE_DIR"/skills/* "$CLAUDE_DIR"/agents/*; do
+    if [ -L "$l" ] && [ ! -e "$l" ] && [[ "$(readlink "$l")" == "$AGENTS/"* ]]; then
       say "  prune   $l"; run rm "$l"
     fi
   done
